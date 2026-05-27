@@ -146,10 +146,10 @@ def vision_thread_func(socketio):
         print(f"[VisionEngine] Gagal memuat model: {e}. Berjalan tanpa AI.")
 
     # ── Loop utama ───────────────────────────────────────────────────────────
+    # ── Loop utama ───────────────────────────────────────────────────────────
     while True:
         t_start = time.time()
-
-        active_tab = state.active_tab_view   # tidak perlu lock (int, atomic)
+        active_tab = state.active_tab_view   # Ambil info tab yang sedang dibuka
 
         for i, cap in enumerate(caps):
             if cap is None:
@@ -164,35 +164,36 @@ def vision_thread_func(socketio):
                     state.frames[i] = _make_blank_frame(i)
                     continue
 
-            # ── On-demand inference: hanya jalur yang tab-nya aktif ──────────
-            if i == active_tab and model is not None:
+            # [REVISI] Jalankan YOLO untuk SEMUA jalur agar angka poin selalu update
+            if model is not None:
                 try:
                     results = model.predict(
                         frame,
                         verbose=False,
                         conf=CONFIDENCE_THRESH,
                     )
-                    frame, counts = _annotate_frame(frame, results)
+                    # Catatan: Pastikan pemanggilan fungsi ini sesuai (pakai 2 parameter jika belum pakai ROI)
+                    annotated_frame, counts = _annotate_frame(frame, results)
 
-                    # Update state (thread-safe)
+                    # Update angka kendaraan di state secara real-time untuk SEMUA jalur
                     with state.lock:
                         state.lanes[i].counts = counts
 
-                    # Broadcast data update ke semua client
-                    socketio.emit("data_update", state.to_payload())
+                    # [OPTIMASI] Hanya encode/kompres video JPEG untuk jalur yang tabnya sedang dilihat.
+                    # Ini mencegah CPU drop parah karena kompresi 4 video sekaligus.
+                    if i == active_tab:
+                        _, buf = cv2.imencode(
+                            ".jpg", annotated_frame,
+                            [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
+                        )
+                        state.frames[i] = buf.tobytes()
 
                 except Exception as e:
                     print(f"[VisionEngine] Error inferensi jalur {i}: {e}")
 
-            # ── Encode JPEG dan simpan ke state.frames ───────────────────────
-            try:
-                _, buf = cv2.imencode(
-                    ".jpg", frame,
-                    [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY]
-                )
-                state.frames[i] = buf.tobytes()
-            except Exception as e:
-                print(f"[VisionEngine] Error encode JPEG jalur {i}: {e}")
+        # [REVISI] Pindahkan emit data ke LUAR loop for, 
+        # agar update dikirim SEKALI saja setelah ke-4 jalur selesai dihitung.
+        socketio.emit("data_update", state.to_payload())
 
         # ── Jaga target FPS ──────────────────────────────────────────────────
         elapsed = time.time() - t_start
