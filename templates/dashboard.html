@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Traffic Light AI – Persimpangan Awikwok</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f1117;
+            --panel: #1a1d27;
+            --card: #22263a;
+            --border: #2e3249;
+            --active: #1e90ff;
+            --text: #e0e4f0;
+            --gray: #6b7280;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --green: #22c55e;
+            --orange: #f97316;
+            --purple: #a855f7;
+            --blue: #3b82f6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .app-container {
+            display: grid;
+            grid-template-columns: 60fr 40fr;
+            gap: 12px;
+            padding: 12px;
+            height: 100vh;
+            min-height: 700px;
+            align-items: stretch;
+        }
+        
+        /* ===== LEFT PANEL ===== */
+        .left-panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+            min-height: 0;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 8px;
+            padding: 14px 16px 6px;
+        }
+        
+        .tab-btn {
+            background: var(--card);
+            border: none;
+            padding: 8px 22px;
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .tab-btn.active {
+            background: var(--active);
+            color: white;
+        }
+        
+        .tab-btn:hover:not(.active) {
+            background: #2563eb;
+        }
+        
+        .road-name-row {
+            background: var(--card);
+            margin: 4px 16px 8px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .road-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .edit-btn {
+            background: transparent;
+            border: none;
+            color: var(--gray);
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .edit-btn:hover {
+            background: var(--border);
+        }
+        
+        .mid-section {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 6fr 4fr;
+            gap: 8px;
+            padding: 4px 16px;
+            overflow: hidden;
+        }
+        
+        .video-container {
+            background: #0d0d14;
+            border-radius: 10px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            min-height: 180px;
+        }
+        
+        .video-placeholder {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: #3a3f55;
+            position: absolute;
+            z-index: 1;
+        }
+        
+        #cctv-stream {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+            display: block;
+        }
+        
+        #cctv-stream.hidden {
+            display: none;
+        }
+        
+        .right-mid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .traffic-light-widget {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 8px;
+        }
+        
+        .light-row {
+            display: grid;
+            grid-template-columns: 24px 1fr 40px;
+            gap: 6px;
+            align-items: center;
+            margin: 3px 0;
+        }
+        
+        .light-dot {
+            font-size: 18px;
+        }
+        
+        .light-bar {
+            height: 12px;
+            background: var(--border);
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .light-bar-fill {
+            height: 100%;
+            transition: width 0.3s;
+            border-radius: 6px;
+        }
+        
+        .light-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 12px;
+            text-align: right;
+        }
+        
+        .stats-panel {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 8px;
+            flex: 1;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 0;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: var(--gray);
+        }
+        
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        
+        .progress-section {
+            padding: 8px 16px 4px;
+        }
+        
+        .progress-row {
+            display: grid;
+            grid-template-columns: 60px 1fr 32px 32px;
+            gap: 6px;
+            align-items: center;
+            margin: 4px 0;
+        }
+        
+        .progress-label {
+            font-size: 12px;
+        }
+        
+        .progress-bar {
+            height: 12px;
+            background: var(--border);
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            transition: width 0.3s;
+            border-radius: 6px;
+        }
+        
+        .progress-count, .progress-points {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 12px;
+            padding: 2px 16px 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--gray);
+        }
+        
+        .legend-square {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        /* ===== RIGHT PANEL ===== */
+        .right-panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+            min-height: 0;
+        }
+        
+        .right-title {
+            text-align: right;
+            padding: 14px 16px 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .lane-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            padding: 0 12px 8px;
+            background: var(--card);
+            margin: 0 12px;
+            border-radius: 10px;
+            padding: 6px;
+        }
+        
+        .lane-card {
+            background: var(--panel);
+            border-radius: 8px;
+            padding: 6px 8px;
+            text-align: center;
+        }
+        
+        .lane-card-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+        
+        .lane-card-lights {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+        
+        .lane-card-light {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1px 6px;
+        }
+        
+        .lane-card-dot {
+            font-size: 14px;
+        }
+        
+        .lane-card-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 11px;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: var(--card);
+            margin: 8px 12px;
+            border-radius: 10px;
+            padding: 8px;
+        }
+        
+        .summary-card {
+            text-align: center;
+            padding: 8px;
+        }
+        
+        .summary-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .summary-label {
+            font-size: 11px;
+            color: var(--gray);
+            margin-top: 2px;
+        }
+        
+        .intersection-map {
+            background: var(--card);
+            margin: 0 12px 8px;
+            border-radius: 10px;
+            padding: 4px;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .map-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .bottom-controls {
+            background: var(--card);
+            margin: 0 12px 12px;
+            border-radius: 10px;
+            padding: 8px 10px;
+        }
+        
+        .controls-title {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .limits-grid {
+            display: grid;
+            grid-template-columns: auto repeat(3, 1fr);
+            gap: 4px;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .limits-header {
+            text-align: center;
+            font-size: 18px;
+        }
+        
+        .limits-label {
+            font-size: 11px;
+            color: var(--gray);
+            padding-left: 4px;
+        }
+        
+        .limit-input {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 4px 6px;
+            text-align: center;
+        }
+        
+        .start-btn {
+            background: var(--green);
+            color: black;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 4px;
+            width: 100%;
+        }
+        
+        .start-btn:hover {
+            transform: scale(1.02);
+        }
+        
+        .start-btn.running {
+            background: var(--yellow);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- LEFT PANEL -->
+        <div class="left-panel">
+            <div class="tabs">
+                <button class="tab-btn active" data-lane="0">jalur 1</button>
+                <button class="tab-btn" data-lane="1">jalur 2</button>
+                <button class="tab-btn" data-lane="2">jalur 3</button>
+                <button class="tab-btn" data-lane="3">jalur 4</button>
+            </div>
+            
+            <div class="road-name-row">
+                <span class="road-name" id="road-name">Jalan Jendral Soedirman</span>
+                <button class="edit-btn" onclick="editRoadName()">✎</button>
+            </div>
+            
+            <div class="mid-section">
+                <div class="video-container">
+                    <div class="video-placeholder" id="video-placeholder">cctv jalur 1</div>
+                    <img id="cctv-stream" src="/video_feed/0" alt="CCTV Stream"
+                         onerror="this.classList.add('hidden'); document.getElementById('video-placeholder').style.display='flex';"
+                         onload="this.classList.remove('hidden'); document.getElementById('video-placeholder').style.display='none';">
+                </div>
+                
+                <div class="right-mid">
+                    <div class="traffic-light-widget">
+                        <div class="light-row">
+                            <span class="light-dot" style="color: var(--red)">●</span>
+                            <div class="light-bar">
+                                <div class="light-bar-fill" id="red-bar" style="background: var(--red); width: 0%;"></div>
+                            </div>
+                            <span class="light-time" style="color: var(--red)" id="red-time">0s</span>
+                        </div>
+                        <div class="light-row">
+                            <span class="light-dot" style="color: var(--yellow)">●</span>
+                            <div class="light-bar">
+                                <div class="light-bar-fill" id="yellow-bar" style="background: var(--yellow); width: 0%;"></div>
+                            </div>
+                            <span class="light-time" style="color: var(--yellow)" id="yellow-time">0s</span>
+                        </div>
+                        <div class="light-row">
+                            <span class="light-dot" style="color: var(--green)">●</span>
+                            <div class="light-bar">
+                                <div class="light-bar-fill" id="green-bar" style="background: var(--green); width: 0%;"></div>
+                            </div>
+                            <span class="light-time" style="color: var(--green)" id="green-time">0s</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-panel">
+                        <div class="stat-row">
+                            <span class="stat-label">Poin tingkat kepadatan</span>
+                            <span class="stat-value" style="color: var(--purple)" id="stat-poin">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Jumlah kendaraan</span>
+                            <span class="stat-value" style="color: var(--blue)" id="stat-kendaraan">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Waktu Lampu Hijau Berikutnya</span>
+                            <span class="stat-value" style="color: var(--green)" id="stat-hijau">0s</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Waktu Lampu Merah Berikutnya</span>
+                            <span class="stat-value" style="color: var(--red)" id="stat-merah">0s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="progress-section">
+                <div class="progress-row">
+                    <span class="progress-label">motor</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="motor-bar" style="background: var(--orange); width: 0%;"></div>
+                    </div>
+                    <span class="progress-count" style="color: var(--blue)" id="motor-count">0</span>
+                    <span class="progress-points" style="color: var(--purple)" id="motor-points">0</span>
+                </div>
+                
+                <div class="progress-row">
+                    <span class="progress-label">mobil</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="mobil-bar" style="background: var(--blue); width: 0%;"></div>
+                    </div>
+                    <span class="progress-count" style="color: var(--blue)" id="mobil-count">0</span>
+                    <span class="progress-points" style="color: var(--purple)" id="mobil-points">0</span>
+                </div>
+                
+                <div class="progress-row">
+                    <span class="progress-label">truk</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="truk-bar" style="background: var(--red); width: 0%;"></div>
+                    </div>
+                    <span class="progress-count" style="color: var(--blue)" id="truk-count">0</span>
+                    <span class="progress-points" style="color: var(--purple)" id="truk-points">0</span>
+                </div>
+                
+                <div class="progress-row">
+                    <span class="progress-label">bus</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="bus-bar" style="background: var(--purple); width: 0%;"></div>
+                    </div>
+                    <span class="progress-count" style="color: var(--blue)" id="bus-count">0</span>
+                    <span class="progress-points" style="color: var(--purple)" id="bus-points">0</span>
+                </div>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-square" style="background: var(--blue)"></div>
+                    <span>Jumlah Kendaraan</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-square" style="background: var(--purple)"></div>
+                    <span>Poin Kepadatan</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- RIGHT PANEL -->
+        <div class="right-panel">
+            <div class="right-title">Persimpangan Awikwok</div>
+            
+            <div class="lane-cards" id="lane-cards">
+                <!-- Generated by JS -->
+            </div>
+            
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="summary-value" id="siklus-value">0</div>
+                    <div class="summary-label">Siklus</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value" id="total-kendaraan">0</div>
+                    <div class="summary-label">Total Kendaraan</div>
+                </div>
+            </div>
+            
+            <div class="intersection-map">
+                <canvas class="map-canvas" id="map-canvas"></canvas>
+            </div>
+            
+            <div class="bottom-controls">
+                <div class="controls-title">Batasan Waktu Lampu</div>
+                <div class="limits-grid">
+                    <div></div>
+                    <div class="limits-header" style="color: var(--red)">●</div>
+                    <div class="limits-header" style="color: var(--green)">●</div>
+                    <div class="limits-header" style="color: var(--yellow)">●</div>
+                    
+                    <div class="limits-label">min</div>
+                    <input type="number" class="limit-input" id="red-min" value="30">
+                    <input type="number" class="limit-input" id="green-min" value="10">
+                    <input type="number" class="limit-input" id="yellow-min" value="3">
+                    
+                    <div class="limits-label">max</div>
+                    <input type="number" class="limit-input" id="red-max" value="150">
+                    <input type="number" class="limit-input" id="green-max" value="90">
+                    <input type="number" class="limit-input" id="yellow-max" value="5">
+                </div>
+                <button class="start-btn" id="start-btn" onclick="toggleSystem()">▶  Mulai</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // WebSocket connection
+        const socket = io();
+        
+        let currentTab = 0;
+        let systemRunning = false;
+        let stateData = null;
+        
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const laneIdx = parseInt(btn.dataset.lane);
+                switchTab(laneIdx);
+            });
+        });
+        
+        function switchTab(idx) {
+            currentTab = idx;
+            document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === idx);
+            });
+            const streamImg = document.getElementById('cctv-stream');
+            streamImg.classList.remove('hidden');
+            document.getElementById('video-placeholder').style.display = 'none';
+            streamImg.src = `/video_feed/${idx}`;
+            socket.emit('change_tab', { tab_index: idx });
+            updateLeftPanel();
+        }
+        
+        function updateLeftPanel() {
+            if (!stateData || !stateData.lanes[currentTab]) return;
+            const lane = stateData.lanes[currentTab];
+            
+            document.getElementById('road-name').textContent = lane.road;
+            document.getElementById('video-placeholder').textContent = `cctv ${lane.name}`;
+            
+            
+            // Stats
+            document.getElementById('stat-poin').textContent = lane.total_poin;
+            document.getElementById('stat-kendaraan').textContent = lane.total_kendaraan;
+            
+            // [REVISI 1 & 2] Logika Teks Waktu Berikutnya
+            if (lane.light_state === 'green') {
+                document.getElementById('stat-hijau').textContent = `${lane.timer_green}s`;
+            } else {
+                // Tampilkan prediksi dinamis Waktu Hijau Berikutnya jika sedang merah
+                document.getElementById('stat-hijau').textContent = `${lane.w_hijau_calculated}s`;
+            }
+            document.getElementById('stat-merah').textContent = `${lane.timer_red}s`;
+
+            
+            // Traffic light bars
+            const redMax = parseInt(document.getElementById('red-max').value) || 150;
+            const greenMax = parseInt(document.getElementById('green-max').value) || 90;
+            const yellowMax = parseInt(document.getElementById('yellow-max').value) || 5;
+            
+            document.getElementById('red-bar').style.width = `${Math.min(lane.timer_red / redMax * 100, 100)}%`;
+            document.getElementById('green-bar').style.width = `${Math.min(lane.timer_green / greenMax * 100, 100)}%`;
+            document.getElementById('yellow-bar').style.width = `${Math.min(lane.timer_yellow / yellowMax * 100, 100)}%`;
+            
+            document.getElementById('red-time').textContent = `${lane.timer_red}s`;
+            document.getElementById('green-time').textContent = `${lane.timer_green}s`;
+            document.getElementById('yellow-time').textContent = `${lane.timer_yellow}s`;
+            
+            // Progress bars
+            const vehiclePoints = {motorcycle: 1, car: 2, truck: 3, bus: 3};
+            const vehicleLabels = {motorcycle: 'motor', car: 'mobil', truck: 'truk', bus: 'bus'};
+            
+            Object.keys(vehicleLabels).forEach(vclass => {
+                const count = lane.counts[vclass] || 0;
+                const points = count * vehiclePoints[vclass];
+                const maxCount = Math.max(lane.total_kendaraan, 20);
+                
+                const label = vehicleLabels[vclass];
+                document.getElementById(`${label}-bar`).style.width = `${Math.min(count / maxCount * 100, 100)}%`;
+                document.getElementById(`${label}-count`).textContent = count;
+                document.getElementById(`${label}-points`).textContent = points;
+            });
+        }
+        
+        function updateRightPanel() {
+            if (!stateData) return;
+            
+            // Lane cards
+            const cardsContainer = document.getElementById('lane-cards');
+            cardsContainer.innerHTML = '';
+            stateData.lanes.forEach((lane, i) => {
+                const card = document.createElement('div');
+                card.className = 'lane-card';
+                
+                const dimColors = {red: '#4b1c1c', yellow: '#4b3a0e', green: '#0e3b1e'};
+                const brightColors = {red: '#ef4444', yellow: '#f59e0b', green: '#22c55e'};
+                
+                card.innerHTML = `
+                    <div class="lane-card-name">${lane.name}</div>
+                    <div class="lane-card-lights">
+                        <div class="lane-card-light">
+                            <span class="lane-card-dot" style="color: ${lane.light_state === 'red' ? brightColors.red : dimColors.red}">●</span>
+                            <span class="lane-card-time" style="color: ${brightColors.red}">${lane.timer_red}s</span>
+                        </div>
+                        <div class="lane-card-light">
+                            <span class="lane-card-dot" style="color: ${lane.light_state === 'yellow' ? brightColors.yellow : dimColors.yellow}">●</span>
+                            <span class="lane-card-time" style="color: ${brightColors.yellow}">${lane.timer_yellow}s</span>
+                        </div>
+                        <div class="lane-card-light">
+                            <span class="lane-card-dot" style="color: ${lane.light_state === 'green' ? brightColors.green : dimColors.green}">●</span>
+                            <span class="lane-card-time" style="color: ${brightColors.green}">${lane.timer_green}s</span>
+                        </div>
+                    </div>
+                `;
+                cardsContainer.appendChild(card);
+            });
+            
+            // Summary
+            document.getElementById('siklus-value').textContent = stateData.siklus;
+            const totalKendaraan = stateData.lanes.reduce((sum, l) => sum + l.total_kendaraan, 0);
+            document.getElementById('total-kendaraan').textContent = totalKendaraan;
+            
+            // Intersection map
+            drawIntersectionMap();
+        }
+        
+        function drawIntersectionMap() {
+            const canvas = document.getElementById('map-canvas');
+            const container = canvas.parentElement;
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size from container
+            const cw = container.clientWidth - 8;
+            const ch = container.clientHeight - 8;
+            canvas.width = cw > 0 ? cw : 300;
+            canvas.height = ch > 0 ? ch : 200;
+            
+            const W = canvas.width;
+            const H = canvas.height;
+            const cx = W / 2;
+            const cy = H / 2;
+            const roadW = 36;
+            const roadC = '#1e2235';
+            
+            // Clear
+            ctx.fillStyle = '#22263a';
+            ctx.fillRect(0, 0, W, H);
+            
+            // Roads
+            ctx.fillStyle = roadC;
+            ctx.fillRect(0, cy - roadW, W, roadW * 2);
+            ctx.fillRect(cx - roadW, 0, roadW * 2, H);
+            
+            // Center intersection
+            ctx.fillStyle = '#171a28';
+            ctx.fillRect(cx - roadW, cy - roadW, roadW * 2, roadW * 2);
+            
+            // Traffic lights & labels
+            if (!stateData) return;
+            
+            const positions = [
+                {x: cx - roadW - 22, y: cy - roadW - 22, name: 'jalur 1', anchor: 'nw', i: 0},
+                {x: cx + roadW + 10, y: cy - roadW - 22, name: 'jalur 2', anchor: 'ne', i: 1},
+                {x: cx + roadW + 10, y: cy + roadW + 10, name: 'jalur 3', anchor: 'se', i: 2},
+                {x: cx - roadW - 22, y: cy + roadW + 10, name: 'jalur 4', anchor: 'sw', i: 3},
+            ];
+            
+            positions.forEach(pos => {
+                const lane = stateData.lanes[pos.i];
+                drawMiniTrafficLight(ctx, pos.x, pos.y, lane.light_state);
+                
+                // Label
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '9px JetBrains Mono';
+                ctx.textAlign = 'center';
+                const lx = pos.anchor.includes('w') ? pos.x - 8 : pos.x + 28;
+                const ly = pos.anchor.includes('n') ? pos.y - 10 : pos.y + 52;
+                ctx.fillText(pos.name, lx, ly);
+                
+                // Vehicle count
+                // [REVISI 4] Poin Kepadatan di Peta (Warna Pink)
+                const kx = pos.anchor.includes('w') ? pos.x - 20 : pos.x + 48;
+                const ky = pos.y + 10;
+                
+                ctx.fillStyle = '#a855f7'; // Latar belakang ungu
+                ctx.beginPath();
+                ctx.arc(kx, ky, 9, 0, Math.PI * 2); // Lingkaran diperbesar (sebelumnya 4, sekarang 9)
+                ctx.fill();
+                
+                ctx.fillStyle = '#ffffff'; // Warna teks putih agar terang
+                ctx.font = 'bold 11px JetBrains Mono'; // Font diperbesar dan ditebalkan
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Ganti total_kendaraan menjadi total_poin
+                ctx.fillText(lane.total_poin, kx, ky);
+            });
+            
+            // Arrows
+            ctx.strokeStyle = '#3a3f55';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(cx - 10, cy + roadW + 4);
+            ctx.lineTo(cx - 10, H - 4);
+            ctx.stroke();
+            drawArrowhead(ctx, cx - 10, H - 4, 'down');
+            
+            ctx.beginPath();
+            ctx.moveTo(cx + 10, H - 4);
+            ctx.lineTo(cx + 10, cy + roadW + 4);
+            ctx.stroke();
+            drawArrowhead(ctx, cx + 10, cy + roadW + 4, 'up');
+        }
+        
+        function drawMiniTrafficLight(ctx, x, y, state) {
+            // Box
+            ctx.fillStyle = '#111320';
+            ctx.fillRect(x, y, 18, 46);
+            ctx.strokeStyle = '#2e3249';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, 18, 46);
+            
+            // Lights
+            const lights = [
+                {name: 'red', color: '#ef4444', dim: '#3b0d0d', y: 7},
+                {name: 'yellow', color: '#f59e0b', dim: '#3b2e05', y: 21},
+                {name: 'green', color: '#22c55e', dim: '#0a2e13', y: 35},
+            ];
+            
+            lights.forEach(light => {
+                ctx.fillStyle = light.name === state ? light.color : light.dim;
+                ctx.beginPath();
+                ctx.arc(x + 9, y + light.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        function drawArrowhead(ctx, x, y, dir) {
+            ctx.fillStyle = '#3a3f55';
+            ctx.beginPath();
+            if (dir === 'down') {
+                ctx.moveTo(x, y);
+                ctx.lineTo(x - 4, y - 6);
+                ctx.lineTo(x + 4, y - 6);
+            } else {
+                ctx.moveTo(x, y);
+                ctx.lineTo(x - 4, y + 6);
+                ctx.lineTo(x + 4, y + 6);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        function toggleSystem() {
+            if (!systemRunning) {
+                socket.emit('start_system');
+                systemRunning = true;
+                document.getElementById('start-btn').textContent = '⏸  Jeda';
+                document.getElementById('start-btn').classList.add('running');
+            } else {
+                socket.emit('stop_system');
+                systemRunning = false;
+                document.getElementById('start-btn').textContent = '▶  Mulai';
+                document.getElementById('start-btn').classList.remove('running');
+            }
+        }
+        
+        function editRoadName() {
+            const newName = prompt('Nama jalan baru:', document.getElementById('road-name').textContent);
+            if (newName) {
+                socket.emit('update_road_name', {lane_id: currentTab, name: newName});
+            }
+        }
+        
+        // Socket events
+        socket.on('status_update', (data) => {
+            stateData = data;
+            updateLeftPanel();
+            updateRightPanel();
+        });
+        
+        socket.on('timer_update', (data) => {
+            stateData = data;
+            updateLeftPanel();
+            updateRightPanel();
+        });
+        
+        socket.on('data_update', (data) => {
+            stateData = data;
+            updateLeftPanel();
+            updateRightPanel();
+        });
+        
+        socket.on('road_updated', (data) => {
+            if (stateData) {
+                stateData.lanes[data.lane_id].road = data.name;
+                updateLeftPanel();
+            }
+        });
+        
+        // Initial render
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+        
+        // Resize canvas
+        window.addEventListener('resize', () => {
+            if (stateData) drawIntersectionMap();
+        });
+    </script>
+</body>
+</html>
