@@ -611,23 +611,7 @@
             </div>
             
             <div class="bottom-controls">
-                <div class="controls-title">Batasan Waktu Lampu</div>
-                <div class="limits-grid">
-                    <div></div>
-                    <div class="limits-header" style="color: var(--red)">●</div>
-                    <div class="limits-header" style="color: var(--green)">●</div>
-                    <div class="limits-header" style="color: var(--yellow)">●</div>
-                    
-                    <div class="limits-label">min</div>
-                    <input type="number" class="limit-input" id="red-min" value="30">
-                    <input type="number" class="limit-input" id="green-min" value="10">
-                    <input type="number" class="limit-input" id="yellow-min" value="3">
-                    
-                    <div class="limits-label">max</div>
-                    <input type="number" class="limit-input" id="red-max" value="150">
-                    <input type="number" class="limit-input" id="green-max" value="90">
-                    <input type="number" class="limit-input" id="yellow-max" value="5">
-                </div>
+                
                 <button class="start-btn" id="start-btn" onclick="toggleSystem()">▶  Mulai</button>
             </div>
         </div>
@@ -686,9 +670,9 @@
 
             
             // Traffic light bars
-            const redMax = parseInt(document.getElementById('red-max').value) || 150;
-            const greenMax = parseInt(document.getElementById('green-max').value) || 90;
-            const yellowMax = parseInt(document.getElementById('yellow-max').value) || 5;
+            const redMax = 150;
+            const greenMax =  90;
+            const yellowMax =  5;
             
             document.getElementById('red-bar').style.width = `${Math.min(lane.timer_red / redMax * 100, 100)}%`;
             document.getElementById('green-bar').style.width = `${Math.min(lane.timer_green / greenMax * 100, 100)}%`;
